@@ -13,15 +13,17 @@ function createWindow(): void {
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      webSecurity: app.isPackaged,
+      allowRunningInsecureContent: false
     }
   })
 
   mainWindow.on('ready-to-show', () => {
+    // mainWindow.setBackgroundColor('#FFFF00')
+    mainWindow.setIcon(icon)
     mainWindow.show()
   })
-
-  mainWindow.setIcon(icon)
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
