@@ -23,65 +23,31 @@ import {
 } from '@renderer/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
 import {
+  Move,
   Pokemon,
   getTypeColor,
   capitalizeFirstLetter,
-  formatMoveName
+  formatMoveName,
+  getTypeIcons,
+  getMoveTypeIcon
 } from '@renderer/utils/pokemonUtils'
 
 import pokemonData from '../../data/pokemon_data.json'
 
-import bugIcon from '../../assets/pokemon_types/bug_icon.png'
-import darkIcon from '../../assets/pokemon_types/dark_icon.png'
-import dragonIcon from '../../assets/pokemon_types/dragon_icon.png'
-import electricIcon from '../../assets/pokemon_types/electric_icon.png'
-import fairyIcon from '../../assets/pokemon_types/fairy_icon.png'
-import fightingIcon from '../../assets/pokemon_types/fighting_icon.png'
-import fireIcon from '../../assets/pokemon_types/fire_icon.png'
-import flyingIcon from '../../assets/pokemon_types/flying_icon.png'
-import ghostIcon from '../../assets/pokemon_types/ghost_icon.png'
-import grassIcon from '../../assets/pokemon_types/grass_icon.png'
-import groundIcon from '../../assets/pokemon_types/ground_icon.png'
-import iceIcon from '../../assets/pokemon_types/ice_icon.png'
-import normalIcon from '../../assets/pokemon_types/normal_icon.png'
-import poisonIcon from '../../assets/pokemon_types/poison_icon.png'
-import psychicIcon from '../../assets/pokemon_types/psychic_icon.png'
-import rockIcon from '../../assets/pokemon_types/rock_icon.png'
-import steelIcon from '../../assets/pokemon_types/steel_icon.png'
-import waterIcon from '../../assets/pokemon_types/water_icon.png'
-
 function PokemonCard(): JSX.Element {
-  // Map type names to their corresponding icons
-  const typeIcons: { [key: string]: string } = {
-    bug: bugIcon,
-    dark: darkIcon,
-    dragon: dragonIcon,
-    electric: electricIcon,
-    fairy: fairyIcon,
-    fighting: fightingIcon,
-    fire: fireIcon,
-    flying: flyingIcon,
-    ghost: ghostIcon,
-    grass: grassIcon,
-    ground: groundIcon,
-    ice: iceIcon,
-    normal: normalIcon,
-    poison: poisonIcon,
-    psychic: psychicIcon,
-    rock: rockIcon,
-    steel: steelIcon,
-    water: waterIcon
-  }
+  // Call the function to get the type icons
+  const typeIcons = getTypeIcons()
+  const moveTypeIcons = getMoveTypeIcon()
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-6 ">
       {Array.from({ length: 6 }).map((_, index) => {
         const [selectedPokemon, setSelectedPokemon] = useState<Pokemon | null>(null)
         const [openPokemon, setOpenPokemon] = useState(false)
-        const [selectedMoves, setSelectedMoves] = useState<string[]>(Array(4).fill(''))
+        const [selectedMoves, setSelectedMoves] = useState<Move[]>(Array(4).fill(''))
         const [openMoves, setOpenMoves] = useState<boolean[]>(Array(4).fill(false))
 
-        const handleMoveSelect = (moveIndex: number, move: string): void => {
+        const handleMoveSelect = (moveIndex: number, move: Move): void => {
           setSelectedMoves((prev) => {
             const newMoves = [...prev]
             newMoves[moveIndex] = move
@@ -95,7 +61,10 @@ function PokemonCard(): JSX.Element {
         }
 
         return (
-          <Card key={index} className="shadow-lg flex flex-col relative">
+          <Card
+            key={index}
+            className="shadow-lg flex flex-col relative bg-white border border-gray-200 rounded-lg"
+          >
             <div className="absolute -top-3 left-5 flex gap-1 z-10">
               {selectedPokemon?.types.map((type, index) => (
                 <img
@@ -124,7 +93,7 @@ function PokemonCard(): JSX.Element {
                           <CommandList>
                             <CommandEmpty>No Pokémon found.</CommandEmpty>
                             <CommandGroup>
-                              {pokemonData.map((pokemon) => (
+                              {(pokemonData as Pokemon[]).map((pokemon: Pokemon) => (
                                 <CommandItem
                                   key={pokemon.name}
                                   onSelect={() => {
@@ -148,7 +117,7 @@ function PokemonCard(): JSX.Element {
                         {selectedPokemon.types.map((type, index) => (
                           <Button
                             key={index}
-                            className={`${getTypeColor(type)} disabled:opacity-100 select-none w-20 h-6`}
+                            className={`${getTypeColor(type).bg} disabled:opacity-100 select-none w-20 h-6`}
                             disabled
                           >
                             {capitalizeFirstLetter(type)}
@@ -185,14 +154,22 @@ function PokemonCard(): JSX.Element {
                       <Button
                         className={`${
                           selectedMoves[moveIndex]
-                            ? 'bg-gradient-to-r from-gray-600 to-gray-800 hover:bg-gradient-to-r'
+                            ? `bg-gray-600 border-4 ${getTypeColor(selectedMoves[moveIndex].type).border} hover:${getTypeColor(selectedMoves[moveIndex].type).bg} hover:brightness-110`
                             : 'bg-gray-500'
                         } disabled:opacity-100 select-none`}
                         disabled={!selectedPokemon}
                       >
-                        {selectedMoves[moveIndex]
-                          ? formatMoveName(selectedMoves[moveIndex])
-                          : `Move ${moveIndex + 1}`}
+                        {selectedMoves[moveIndex] ? (
+                          <div className="flex items-center gap-2">
+                            <span>{formatMoveName(selectedMoves[moveIndex].name)}</span>
+                            <img
+                              src={moveTypeIcons[selectedMoves[moveIndex].type]}
+                              alt={`${selectedMoves[moveIndex].type} icon`}
+                            />
+                          </div>
+                        ) : (
+                          `Move ${moveIndex + 1}`
+                        )}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-[200px] p-0">
@@ -202,13 +179,19 @@ function PokemonCard(): JSX.Element {
                           <CommandEmpty>No moves found.</CommandEmpty>
                           <CommandGroup>
                             {selectedPokemon?.moves
-                              .filter((move) => !selectedMoves.includes(move))
+                              .filter(
+                                (move) =>
+                                  !selectedMoves.some(
+                                    (selectedMove) =>
+                                      selectedMove && selectedMove.name === move.name
+                                  )
+                              )
                               .map((move) => (
                                 <CommandItem
-                                  key={move}
+                                  key={move.name}
                                   onSelect={() => handleMoveSelect(moveIndex, move)}
                                 >
-                                  {formatMoveName(move)}
+                                  {formatMoveName(move.name)}
                                 </CommandItem>
                               ))}
                           </CommandGroup>
